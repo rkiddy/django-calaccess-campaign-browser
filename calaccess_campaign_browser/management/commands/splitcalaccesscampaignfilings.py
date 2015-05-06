@@ -43,7 +43,7 @@ class Command(CalAccessCommand):
             help="Execute a dry run; do not execute any of the SQL, except for FILER_FILINGS."
         ),
         make_option(
-            '--verbose', '-v',
+            '--verbose',
             dest="verbose",
             action="store_true",
             default=False,
@@ -110,88 +110,126 @@ class Command(CalAccessCommand):
 
         # years = ['2014', '2015']
 
-        if not dryRun:
+        #if not dryRun:
 
-            for year in years:
+        #    for year in years:
 
-                self.success('  table: FILER_FILINGS_CD year: %s' % year)
+        #        self.success('  table: FILER_FILINGS_CD year: %s' % year)
 
-                sqls = []
+        #        sqls = []
 
-                # First, split the filer_filings table
-                #
-                sqls.append("""
-                    drop table if exists FILER_FILINGS_CD_%s
-                """ % year)
+        #        # First, split the filer_filings table
+        #        #
+        #        sqls.append("""
+        #            drop table if exists FILER_FILINGS_CD_%s
+        #        """ % year)
 
-                sqls.append("""
-                    create table FILER_FILINGS_CD_%s like FILER_FILINGS_CD
-                """ % year)
+        #        sqls.append("""
+        #            create table FILER_FILINGS_CD_%s like FILER_FILINGS_CD
+        #        """ % year)
 
-                sqls.append("""
-                    insert into FILER_FILINGS_CD_%s select * from FILER_FILINGS_CD
-                    where RPT_END >= '%s-01-01' and RPT_END <= '%s-12-31'
-                """ % (year, year, year))
+        #        sqls.append("""
+        #            insert into FILER_FILINGS_CD_%s select * from FILER_FILINGS_CD
+        #            where RPT_END >= '%s-01-01' and RPT_END <= '%s-12-31'
+        #        """ % (year, year, year))
 
-                self.executeSqls(dryRunAll, sqls)
+        #        self.executeSqls(dryRunAll, sqls)
 
-            self.success('  table: FILER_FILINGS_CD year: else')
+        #    self.success('  table: FILER_FILINGS_CD year: else')
+
+        #    sqls = []
+
+        #    sqls.append("""
+        #        drop table if exists FILER_FILINGS_CD_else
+        #    """)
+
+        #    sqls.append("""
+        #        create table FILER_FILINGS_CD_else like FILER_FILINGS_CD
+        #    """)
+
+        #    sqls.append("""
+        #        insert into FILER_FILINGS_CD_else select * from FILER_FILINGS_CD
+        #        where RPT_END <= '2000-01-01' or RPT_END >= '2015-12-31'
+        #    """)
+
+        #    self.executeSqls(dryRunAll, sqls)
+
+        #if dryRunAll:
+        #    exit()
+
+        #for year in years:
+
+        #    sql = """
+        #        select FILING_ID from FILER_FILINGS_CD_%s
+        #    """ % year
+
+        #    filingIds = []
+
+        #    c = connection.cursor()
+
+        #    c.execute(sql)
+
+        #    for row in c.fetchall():
+        #        filingIds.append(str(row[0]))
+
+        #    c.close()
+
+        #    for table in tables:
+
+        #        sqls = []
+
+        #        tableName = str(get_model('calaccess_raw', table)._meta.db_table)
+
+        #        self.success('  table: %s year: %s' % (tableName, year))
+
+        #        sqls.append("""
+        #            drop table if exists %s_%s
+        #        """ % (tableName, year))
+
+        #        sqls.append("""
+        #            create table %s_%s like %s
+        #        """ % (tableName, year, tableName))
+
+        #        sqls.append("""
+        #            insert into %s_%s select * from %s where FILING_ID in (%s)
+        #        """ % (tableName, year, tableName, ','.join(filingIds)))
+
+        #        self.executeSqls(dryRun, sqls)
+
+        sql = """
+            select FILING_ID from FILER_FILINGS_CD_else
+        """
+
+        filingIds = []
+
+        c = connection.cursor()
+
+        c.execute(sql)
+
+        for row in c.fetchall():
+            filingIds.append(str(row[0]))
+
+        c.close()
+
+        for table in tables:
 
             sqls = []
 
-            sqls.append("""
-                drop table if exists FILER_FILINGS_CD_else
-            """)
+            tableName = str(get_model('calaccess_raw', table)._meta.db_table)
+
+            self.success('  table: %s year: else' % tableName)
 
             sqls.append("""
-                create table FILER_FILINGS_CD_else like FILER_FILINGS_CD
-            """)
+                drop table if exists %s_else
+            """ % tableName)
 
             sqls.append("""
-                insert into FILER_FILINGS_CD_else select * from FILER_FILINGS_CD
-                where RPT_END <= '2000-01-01' or RPT_END >= '2015-12-31'
-            """)
+                create table %s_else like %s
+            """ % (tableName, tableName))
 
-            self.executeSqls(dryRunAll, sqls)
+            sqls.append("""
+                insert into %s_else select * from %s where FILING_ID in (%s)
+            """ % (tableName, tableName, ','.join(filingIds)))
 
-        if dryRunAll:
-            exit()
+            self.executeSqls(dryRun, sqls)
 
-        for year in years:
-
-            sql = """
-                select FILING_ID from FILER_FILINGS_CD_%s
-            """ % year
-
-            filingIds = []
-
-            c = connection.cursor()
-
-            c.execute(sql)
-
-            for row in c.fetchall():
-                filingIds.append(str(row[0]))
-
-            c.close()
-
-            for table in tables:
-
-                sqls = []
-
-                tableName = str(get_model('calaccess_raw', table)._meta.db_table)
-
-                self.success('  table: %s year: %s' % (tableName, year))
-
-                sqls.append("""
-                    drop table if exists %s_%s
-                """ % (tableName, year))
-
-                sqls.append("""
-                    create table %s_%s like %s
-                """ % (tableName, year, tableName))
-
-                sqls.append("""
-                    insert into %s_%s select * from %s where FILING_ID in (%s)
-                """ % (tableName, year, tableName, ','.join(filingIds)))
-
-                self.executeSqls(dryRun, sqls)
